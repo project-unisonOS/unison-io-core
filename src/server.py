@@ -41,6 +41,7 @@ def http_post_json(host: str, port: str, path: str, payload: dict, headers: Dict
         return (False, 0, None)
 
 
+@app.get("/healthz")
 @app.get("/health")
 def health(request: Request):
     _metrics["/health"] += 1
@@ -66,6 +67,7 @@ def metrics():
     ])
     return "\n".join(lines)
 
+@app.get("/readyz")
 @app.get("/ready")
 def ready(request: Request):
     event_id = request.headers.get("X-Event-ID")
