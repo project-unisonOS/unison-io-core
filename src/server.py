@@ -7,8 +7,9 @@ import time
 from collections import defaultdict
 
 import httpx
-from fastapi import FastAPI, Body, Request
+from fastapi import FastAPI, Body, Request, HTTPException
 import uvicorn
+from unison_common import EnvelopeValidationError, validate_event_envelope
 from unison_common.logging import configure_logging, log_json
 
 APP_NAME = "unison-io-core"
@@ -81,6 +82,18 @@ def ready(request: Request):
 def io_emit(request: Request, envelope: Dict[str, Any] = Body(...)):
     _metrics["/io/emit"] += 1
     event_id = request.headers.get("X-Event-ID") or str(uuid.uuid4())
+    try:
+        envelope = validate_event_envelope(envelope)
+    except EnvelopeValidationError as exc:
+        log_json(
+            logging.WARNING,
+            "io_emit_invalid_envelope",
+            service="unison-io-core",
+            event_id=event_id,
+            error=str(exc),
+        )
+        raise HTTPException(status_code=400, detail=f"Invalid event envelope: {exc}") from exc
+
     log_json(logging.INFO, "io_emit", service="unison-io-core", event_id=event_id, intent=envelope.get("intent"))
     ok, status, body = http_post_json(ORCH_HOST, ORCH_PORT, "/event", envelope, headers={"X-Event-ID": event_id})
     log_json(logging.INFO, "io_emit_result", service="unison-io-core", event_id=event_id, ok=ok, status=status)
