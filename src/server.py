@@ -11,6 +11,11 @@ from fastapi import FastAPI, Body, Request, HTTPException
 import uvicorn
 from unison_common import EnvelopeValidationError, validate_event_envelope
 from unison_common.logging import configure_logging, log_json
+from unison_common.baton import get_current_baton
+try:
+    from unison_common import BatonMiddleware
+except Exception:
+    BatonMiddleware = None
 
 APP_NAME = "unison-io-core"
 ORCH_HOST = os.getenv("UNISON_ORCH_HOST", "orchestrator")
@@ -18,6 +23,8 @@ ORCH_PORT = os.getenv("UNISON_ORCH_PORT", "8080")
 
 app = FastAPI(title=APP_NAME)
 logger = configure_logging("unison-io-core")
+if BatonMiddleware:
+    app.add_middleware(BatonMiddleware)
 
 # Simple in-memory metrics
 _metrics = defaultdict(int)
@@ -28,6 +35,9 @@ def http_post_json(host: str, port: str, path: str, payload: dict, headers: Dict
     try:
         url = f"http://{host}:{port}{path}"
         merged_headers = {"Accept": "application/json"}
+        baton = get_current_baton()
+        if baton:
+            merged_headers["X-Context-Baton"] = baton
         if headers:
             merged_headers.update(headers)
         with httpx.Client(timeout=2.0) as client:
