@@ -5,6 +5,7 @@ import logging
 import json
 import time
 from collections import defaultdict
+from datetime import datetime, timezone
 
 import httpx
 from fastapi import FastAPI, Body, Request, HTTPException
@@ -20,6 +21,7 @@ except Exception:
 APP_NAME = "unison-io-core"
 ORCH_HOST = os.getenv("UNISON_ORCH_HOST", "orchestrator")
 ORCH_PORT = os.getenv("UNISON_ORCH_PORT", "8080")
+DEFAULT_PERSON_ID = os.getenv("UNISON_DEFAULT_PERSON_ID", "local-user")
 
 app = FastAPI(title=APP_NAME)
 logger = configure_logging("unison-io-core")
@@ -50,6 +52,59 @@ def http_post_json(host: str, port: str, path: str, payload: dict, headers: Dict
         return (resp.status_code >= 200 and resp.status_code < 300, resp.status_code, parsed)
     except Exception:
         return (False, 0, None)
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.lower() in {"1", "true", "yes", "on"}
+
+
+def _detect_capabilities() -> Dict[str, Any]:
+    """Lightweight, env-driven capability detection (no host probing in devstack)."""
+    return {
+        "audio_in": {"present": _env_flag("UNISON_HAS_AUDIO_IN", True), "confidence": 0.8},
+        "audio_out": {"present": _env_flag("UNISON_HAS_AUDIO_OUT", True), "confidence": 0.8},
+        "display": {"present": _env_flag("UNISON_HAS_DISPLAY", False), "confidence": 0.6},
+        "camera": {"present": _env_flag("UNISON_HAS_CAMERA", False), "confidence": 0.6},
+        "sign_adapter": {"present": _env_flag("UNISON_HAS_SIGN_ADAPTER", False)},
+        "bci_adapter": {"present": _env_flag("UNISON_HAS_BCI_ADAPTER", False)},
+        "wakeword": {"present": _env_flag("UNISON_WAKEWORD_AVAILABLE", True)},
+        "locale_hint": os.getenv("UNISON_LOCALE_HINT", ""),
+    }
+
+
+def _emit_caps_report() -> None:
+    """Send a caps.report envelope to orchestrator on startup; best-effort."""
+    caps = _detect_capabilities()
+    envelope = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "source": APP_NAME,
+        "intent": "caps.report",
+        "payload": {
+            "person_id": DEFAULT_PERSON_ID,
+            "caps": caps,
+        },
+    }
+    ok, status, _ = http_post_json(ORCH_HOST, ORCH_PORT, "/event", envelope)
+    log_json(
+        logging.INFO,
+        "caps_report",
+        service=APP_NAME,
+        ok=ok,
+        status=status,
+        caps=caps,
+    )
+
+
+@app.on_event("startup")
+def _on_startup():
+    # Emit a one-time capability report so orchestrator can tailor prompts.
+    try:
+        _emit_caps_report()
+    except Exception as exc:  # pragma: no cover - defensive
+        log_json(logging.WARNING, "caps_report_failed", service=APP_NAME, error=str(exc))
 
 
 @app.get("/healthz")
