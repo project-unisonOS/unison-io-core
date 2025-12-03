@@ -38,6 +38,10 @@ Invoke-RestMethod -Uri http://localhost:8085/io/emit -Method POST -ContentType '
 ## Environment
 
 - `UNISON_ORCH_HOST` (default orchestrator host, e.g., `localhost` or `orchestrator` in devstack)
+
+## Docs
+
+Full docs at https://project-unisonos.github.io
 - `UNISON_ORCH_PORT` (default `8080`)
 - `UNISON_API_KEY` (optional; pass-through auth header if orchestrator enforces API keys)
 
