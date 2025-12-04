@@ -68,6 +68,7 @@ def _detect_capabilities() -> Dict[str, Any]:
         "audio_out": {"present": _env_flag("UNISON_HAS_AUDIO_OUT", True), "confidence": 0.8},
         "display": {"present": _env_flag("UNISON_HAS_DISPLAY", False), "confidence": 0.6},
         "camera": {"present": _env_flag("UNISON_HAS_CAMERA", False), "confidence": 0.6},
+        "touch": {"present": _env_flag("UNISON_HAS_TOUCH", False), "confidence": 0.7},
         "sign_adapter": {"present": _env_flag("UNISON_HAS_SIGN_ADAPTER", False)},
         "bci_adapter": {"present": _env_flag("UNISON_HAS_BCI_ADAPTER", False)},
         "wakeword": {"present": _env_flag("UNISON_WAKEWORD_AVAILABLE", True)},
