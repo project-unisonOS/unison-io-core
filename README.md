@@ -55,3 +55,4 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 OTEL_SDK_DISABLED=true python -m pytest
 ## Notes
 
 - Intended for Developer Mode; no persistence; models are pluggable later.
+- For expressive outputs (speech/vision/sign/braille rendering), continue to send EventEnvelopes via orchestrator/renderer. For physical actuation (braille hardware moves pins, sign hardware motion, robotics, automation), use the Action Envelope path via `unison-actuation` (`unison-docs/dev/specs/action-envelope.md`).
