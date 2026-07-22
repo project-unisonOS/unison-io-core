@@ -173,4 +173,5 @@ def io_emit(request: Request, envelope: Dict[str, Any] = Body(...)):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8085)
+    # Container ingress requires binding the service on every network interface.
+    uvicorn.run(app, host="0.0.0.0", port=8085)  # nosec B104
